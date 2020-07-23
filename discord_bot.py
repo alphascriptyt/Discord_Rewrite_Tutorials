@@ -14,53 +14,19 @@ botdata = BotData()
 @bot.event
 async def on_ready():
     print("Your bot is ready.")
+    bot.reaction_roles = []
 
+@bot.event
+async def on_raw_reaction_add(payload):
+    for role, msg, emoji in bot.reaction_roles:
+        if msg.id == payload.message_id and emoji == payload.emoji.name:
+            await payload.member.add_roles(role)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
+@bot.event
+async def on_raw_reaction_remove(payload):
+    for role, msg, emoji in bot.reaction_roles:
+        if msg.id == payload.message_id and emoji == payload.emoji:
+            await bot.get_guild(payload.guild_id).get_member(payload.user_id).remove_roles(role)
 
 @bot.event
 async def on_member_join(member):
@@ -79,6 +45,22 @@ async def on_member_remove(member):
         print("Goodbye channel was not set.")
 
 #bot commands
+@bot.command()
+async def set_reaction(ctx, role: discord.Role, msg: discord.Message, emoji):
+    # Optional for custom emojis, not tested.
+    if emoji.isdigit():
+        try:
+            emoji = bot.get_emoji(emoji).name
+        except:
+            emoji = None
+    
+    if role != None and msg != None and emoji != None:
+        await msg.add_reaction(emoji)
+        bot.reaction_roles.append((role, msg, emoji))
+        
+    else:
+        await ctx.send("Invalid arguments.")
+
 @bot.command()
 async def set_welcome_channel(ctx, channel_name=None):
     if channel_name != None:

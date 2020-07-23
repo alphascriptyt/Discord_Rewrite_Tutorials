@@ -8,15 +8,59 @@ class BotData:
         self.welcome_channel = None
         self.goodbye_channel = None
 
-        self.reaction_role = None
-        self.reaction_message = None
-
 botdata = BotData()
 
 #bot events
 @bot.event
 async def on_ready():
     print("Your bot is ready.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
 @bot.event
 async def on_member_join(member):
@@ -34,45 +78,7 @@ async def on_member_remove(member):
     else:
         print("Goodbye channel was not set.")
 
-@bot.event
-async def on_raw_reaction_add(payload):
-    if payload.message_id == botdata.reaction_message.id and botdata.reaction_role != None:
-        await payload.member.add_roles(botdata.reaction_role)
-
-@bot.event
-async def on_raw_reaction_remove(payload):
-    if payload.message_id == botdata.reaction_message.id and botdata.reaction_role != None:
-        await bot.get_guild(payload.guild_id).get_member(payload.user_id).remove_roles(botdata.reaction_role)
-
 #bot commands
-@bot.command()
-async def set_reaction_data(ctx, message_id=None, role_id=None):
-    for channel in ctx.guild.channels:
-        try:
-            botdata.reaction_message = await channel.fetch_message(int(message_id))
-            break
-
-        except:
-            pass
-
-    if botdata.reaction_message == None:
-        await ctx.send("The given message could not be found.")
-
-    else:
-        await ctx.send("Reaction message has been set.")
-
-    try:
-        botdata.reaction_role = ctx.guild.get_role(int(role_id))
-
-    except:
-        botdata.reaction_role = None
-
-    if botdata.reaction_role == None:
-        await ctx.send("The given role could not be found.")
-
-    else:
-        await ctx.send("Reaction role has been set.")
-
 @bot.command()
 async def set_welcome_channel(ctx, channel_name=None):
     if channel_name != None:

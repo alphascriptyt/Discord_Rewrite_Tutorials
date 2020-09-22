@@ -68,7 +68,7 @@ async def on_member_remove(member):
 async def set_reaction(ctx, role: discord.Role=None, msg: discord.Message=None, emoji=None):
     if role != None and msg != None and emoji != None:
         await msg.add_reaction(emoji)
-        bot.reaction_roles.append((role, msg, str(emoji.encode("utf-8"))))
+        bot.reaction_roles.append((role.id, msg.id, str(emoji.encode("utf-8"))))
         
         async with aiofiles.open("reaction_roles.txt", mode="a") as file:
             emoji_utf = emoji.encode("utf-8")

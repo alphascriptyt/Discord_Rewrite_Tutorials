@@ -2,7 +2,8 @@ import discord
 import aiofiles
 from discord.ext import commands
 
-bot = commands.Bot(command_prefix = "£")
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix = "£", intents=intents)
 
 #bot events
 @bot.event

@@ -40,6 +40,7 @@ async def on_raw_reaction_add(payload):
     for role_id, msg_id, emoji in bot.reaction_roles:
         if msg_id == payload.message_id and emoji == str(payload.emoji.name.encode("utf-8")):
             await payload.member.add_roles(bot.get_guild(payload.guild_id).get_role(role_id))
+            return
 
 @bot.event
 async def on_raw_reaction_remove(payload):
@@ -47,6 +48,7 @@ async def on_raw_reaction_remove(payload):
         if msg_id == payload.message_id and emoji == str(payload.emoji.name.encode("utf-8")):
             guild = bot.get_guild(payload.guild_id)
             await guild.get_member(payload.user_id).remove_roles(guild.get_role(role_id))
+            return
 
 @bot.event
 async def on_member_join(member):

@@ -8,10 +8,10 @@ bot = commands.Bot(command_prefix = "£", intents=intents)
 #bot events
 @bot.event
 async def on_ready():
-    print("Your bot is ready.")
     bot.reaction_roles = []
     bot.welcome_channels = {} # store like {guild_id : (channel_id, message)}
     bot.goodbye_channels = {}
+    bot.sniped_messages = {}
     
     for file in ["reaction_roles.txt", "welcome_channels.txt", "goodbye_channels.txt"]:
         async with aiofiles.open(file, mode="a") as temp:
@@ -34,6 +34,8 @@ async def on_ready():
         for line in lines:
             data = line.split(" ")
             bot.goodbye_channels[int(data[0])] = (int(data[1]), " ".join(data[2:]).strip("\n"))
+
+    print("Your bot is ready.")
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -66,7 +68,26 @@ async def on_member_remove(member):
             await bot.get_guild(guild_id).get_channel(channel_id).send(f"{message} {member.mention}")
             return
 
+@bot.event
+async def on_message_delete(message):
+    bot.sniped_messages[message.guild.id] = (message.content, message.author, message.channel.name, message.created_at)
+
 #bot commands
+@bot.command()
+async def snipe(ctx):
+    try:
+        contents, author, channel_name, time = bot.sniped_messages[ctx.guild.id]
+        
+    except:
+        await ctx.channel.send("Couldn't find a message to snipe!")
+        return
+
+    embed = discord.Embed(description=contents, color=discord.Color.purple(), timestamp=time)
+    embed.set_author(name=f"{author.name}#{author.discriminator}", icon_url=author.avatar_url)
+    embed.set_footer(text=f"Deleted in : #{channel_name}")
+
+    await ctx.channel.send(embed=embed)
+    
 @bot.command()
 async def set_reaction(ctx, role: discord.Role=None, msg: discord.Message=None, emoji=None):
     if role != None and msg != None and emoji != None:

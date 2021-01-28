@@ -1,5 +1,6 @@
-# THIS IS FOR PEOPLE WHO USE CLIENT INSTEAD OF BOT
+# THIS IS FOR PEOPLE WHO USE CLIENT INSTEAD OF client
 
+#client events
 @client.event
 async def on_ready():
     client.reaction_roles = []
@@ -8,12 +9,17 @@ async def on_ready():
     client.sniped_messages = {}
     client.ticket_configs = {}
     client.warnings = {}
+    client.multiplier = 1
+    
+    async with aiosqlite.connect("guilddata.db") as db:
+        for guild in client.guilds:
+            async with aiofiles.open(f"{guild.id}.txt", mode="a") as temp:
+                pass
 
-    for guild in client.guilds:
-        async with aiofiles.open(f"{guild.id}.txt", mode="a") as temp:
-            pass
+            await db.execute(f"CREATE TABLE IF NOT EXISTS guild_{guild.id} (user_id int PRIMARY KEY, exp int)")
 
-        bot.warnings[guild.id] = {}
+
+        client.warnings[guild.id] = {}
     
     for file in ["reaction_roles.txt", "welcome_channels.txt", "goodbye_channels.txt", "ticket_configs.txt"]:
         async with aiofiles.open(file, mode="a") as temp:
@@ -59,12 +65,23 @@ async def on_ready():
 
                 except KeyError:
                     client.warnings[guild.id][member_id] = [1, [(admin_id, reason)]]
+                    
+    print("Your client is ready.")
 
-    print("Your bot is ready.")
+@client.event
+async def on_guild_join(guild):
+    client.warnings[guild.id] = {}
+    async with aiosqlite.connect("guilddata.db") as db:
+        await db.execute(f"CREATE TABLE IF NOT EXISTS guild_{guild.id} (user_id int PRIMARY KEY, exp int)")
+
+@client.event
+async def on_guild_remove(guild):
+    async with aiosqlite.connect("guilddata.db") as db:
+        await db.execute(f"DROP TABLE IF EXISTS guild_{guild.id}")
 
 @client.event
 async def on_raw_reaction_add(payload):
-    for role_id, msg_id, emoji in bot.reaction_roles:
+    for role_id, msg_id, emoji in client.reaction_roles:
         if msg_id == payload.message_id and emoji == str(payload.emoji.name.encode("utf-8")):
             await payload.member.add_roles(client.get_guild(payload.guild_id).get_role(role_id))
             return
@@ -102,7 +119,7 @@ async def on_raw_reaction_add(payload):
 
 @client.event
 async def on_raw_reaction_remove(payload):
-    for role_id, msg_id, emoji in bot.reaction_roles:
+    for role_id, msg_id, emoji in client.reaction_roles:
         if msg_id == payload.message_id and emoji == str(payload.emoji.name.encode("utf-8")):
             guild = client.get_guild(payload.guild_id)
             await guild.get_member(payload.user_id).remove_roles(guild.get_role(role_id))
@@ -128,7 +145,104 @@ async def on_member_remove(member):
 async def on_message_delete(message):
     client.sniped_messages[message.guild.id] = (message.content, message.author, message.channel.name, message.created_at)
 
-#bot commands
+@client.event
+async def on_message(message):
+    if not message.author.client:
+        async with aiosqlite.connect("guilddata.db") as db:
+            cursor = await db.execute(f"INSERT OR IGNORE INTO guild_{message.guild.id} (user_id, exp) VALUES (?,?)", (message.author.id, 1)) 
+
+            if cursor.rowcount == 0:
+                await db.execute(f"UPDATE guild_{message.guild.id} SET exp = exp + 1 WHERE user_id = ?", (message.author.id,))
+                cur = await db.execute(f"SELECT exp FROM guild_{message.guild.id} WHERE user_id = ?", (message.author.id,))
+                data = await cur.fetchone()
+                exp = data[0]
+                lvl = math.sqrt(exp) / client.multiplier
+            
+                if lvl.is_integer():
+                    await message.channel.send(f"{message.author.mention} well done! You're now level: {int(lvl)}.")
+
+            await db.commit()
+
+    await client.process_commands(message)
+
+#client commands
+@client.command()
+async def stats(ctx, member: discord.Member=None):
+    if member is None: member = ctx.author
+
+    # get user exp
+    async with aiosqlite.connect("guilddata.db") as db:
+        async with db.execute(f"SELECT exp FROM guild_{ctx.guild.id} WHERE user_id = ?", (member.id,)) as cursor:
+            data = await cursor.fetchone()
+            exp = data[0]
+
+        # calculate rank
+        async with db.execute(f"SELECT exp FROM guild_{ctx.guild.id}") as cursor:
+            rank = 1
+            async for value in cursor:
+                if exp < value[0]:
+                    rank += 1
+
+    lvl = int(math.sqrt(exp)//client.multiplier)
+
+    current_lvl_exp = (client.multiplier*(lvl))**2
+    next_lvl_exp = (client.multiplier*((lvl+1)))**2
+
+    lvl_percentage = ((exp-current_lvl_exp) / (next_lvl_exp-current_lvl_exp)) * 100
+
+    embed = discord.Embed(title=f"Stats for {member.name}", colour=discord.Colour.gold())
+    embed.add_field(name="Level", value=str(lvl))
+    embed.add_field(name="Exp", value=f"{exp}/{next_lvl_exp}")
+    embed.add_field(name="Rank", value=f"{rank}/{ctx.guild.member_count}")
+    embed.add_field(name="Level Progress", value=f"{round(lvl_percentage, 2)}%")
+
+    await ctx.send(embed=embed)
+
+@client.command()
+async def leaderboard(ctx): 
+    buttons = {}
+    for i in range(1, 6):
+        buttons[f"{i}\N{COMBINING ENCLOSING KEYCAP}"] = i # only show first 5 pages
+
+    previous_page = 0
+    current = 1
+    index = 1
+    entries_per_page = 10
+
+    embed = discord.Embed(title=f"Leaderboard Page {current}", description="", colour=discord.Colour.gold())
+    msg = await ctx.send(embed=embed)
+
+    for button in buttons:
+        await msg.add_reaction(button)
+
+    async with aiosqlite.connect("guilddata.db") as db:
+        while True:
+            if current != previous_page:
+                embed.title = f"Leaderboard Page {current}"
+                embed.description = ""
+
+                async with db.execute(f"SELECT * FROM guild_{ctx.guild.id} ORDER BY exp DESC LIMIT ? OFFSET ?", (entries_per_page, entries_per_page*(current-1),)) as cursor:
+                    index = entries_per_page*(current-1)
+
+                    async for entry in cursor:
+                        index += 1
+                        member_id, exp = entry
+                        member = ctx.guild.get_member(member_id)
+                        embed.description += f"{index}) {member.mention} : {exp}\n"
+
+                    await msg.edit(embed=embed)
+
+            try:
+                reaction, user = await client.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author and reaction.emoji in buttons, timeout=60.0)
+
+            except asyncio.TimeoutError:
+                return await msg.clear_reactions()
+
+            else:
+                previous_page = current
+                await msg.remove_reaction(reaction.emoji, ctx.author)
+                current = buttons[reaction.emoji]
+                
 @client.command()
 @commands.has_permissions(administrator=True)
 async def warnings(ctx, member: discord.Member=None):
@@ -170,7 +284,9 @@ async def warn(ctx, member: discord.Member=None, *, reason=None):
 
     async with aiofiles.open(f"{member.guild.id}.txt", mode="a") as file:
         await file.write(f"{member.id} {ctx.author.id} {reason}\n")
-    
+
+    await ctx.send(f"{member.mention} has {count} {'warning' if first_warning else 'warnings'}.")
+
 @client.command()
 async def configure_ticket(ctx, msg: discord.Message=None, category: discord.CategoryChannel=None):
     if msg is None or category is None:
@@ -211,7 +327,7 @@ async def ticket_config(ctx):
 @client.command()
 async def snipe(ctx):
     try:
-        contents, author, channel_name, time = bot.sniped_messages[ctx.guild.id]
+        contents, author, channel_name, time = client.sniped_messages[ctx.guild.id]
         
     except:
         await ctx.channel.send("Couldn't find a message to snipe!")
@@ -306,7 +422,7 @@ async def repeat(ctx, *, arg=None):
 async def dm(ctx, user_id=None, *, args=None):
     if user_id != None and args != None:
         try:
-            target = await bot.fetch_user(user_id)
+            target = await client.fetch_user(user_id)
             await target.send(args)
 
             await ctx.channel.send("'" + args + "' sent to: " + target.name)
@@ -334,3 +450,4 @@ async def dm_all(ctx, *, args=None):
         await ctx.channel.send("A message was not provided.")
 
 client.run("token")
+

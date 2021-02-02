@@ -31,9 +31,8 @@ async def on_raw_reaction_add(payload):
 
             channel = guild.get_channel(channel_id)
 
-            ticket_num = 1 if len(category.channels) == 0 else int(category.channels[-1].name.split("-")[1]) + 1
-            ticket_channel = await category.create_text_channel(f"ticket {ticket_num}", topic=f"A channel for ticket number {ticket_num}.", permission_synced=True)
-
+            ticket_channel = await category.create_text_channel(f"ticket-{payload.member.display_name}", topic=f"A ticket for {payload.member.display_name}.", permission_synced=True)
+            
             await ticket_channel.set_permissions(payload.member, read_messages=True, send_messages=True)
 
             message = await channel.fetch_message(msg_id)

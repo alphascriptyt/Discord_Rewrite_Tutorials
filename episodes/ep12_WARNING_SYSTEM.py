@@ -7,6 +7,7 @@ bot.warnings = {}
 @bot.event
 async def on_ready():
     for guild in bot.guilds:
+        bot.warnings[guild.id] = {}
         async with aiofiles.open(f"{guild.id}.txt", mode="a") as temp:
             pass
             

@@ -11,22 +11,22 @@ async def on_ready():
         async with aiofiles.open(f"{guild.id}.txt", mode="a") as temp:
             pass
             
-        async with aiofiles.open(f"{guild.id}.txt", mode="r") as file:
-            lines = await file.readlines()
+    async with aiofiles.open(f"{guild.id}.txt", mode="r") as file:
+        lines = await file.readlines()
 
-            for line in lines:
-                data = line.split(" ")
-                member_id = int(data[0])
-                admin_id = int(data[1])
-                reason = " ".join(data[2:]).strip("\n")
+        for line in lines:
+            data = line.split(" ")
+            member_id = int(data[0])
+            admin_id = int(data[1])
+            reason = " ".join(data[2:]).strip("\n")
 
-                try:
-                    bot.warnings[guild.id][member_id][0] += 1
-                    bot.warnings[guild.id][member_id][1].append((admin_id, reason))
+            try:
+                bot.warnings[guild.id][member_id][0] += 1
+                bot.warnings[guild.id][member_id][1].append((admin_id, reason))
 
-                except KeyError:
-                    bot.warnings[guild.id][member_id] = [1, [(admin_id, reason)]]
-                    
+            except KeyError:
+                bot.warnings[guild.id][member_id] = [1, [(admin_id, reason)]]
+                
     print(f"{bot.user.name} is ready.")
 
 @bot.event

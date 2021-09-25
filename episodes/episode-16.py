@@ -184,7 +184,7 @@ class Player(commands.Cog):
             await self.check_queue(ctx)
 
 
-    @commands.commmand()
+    @commands.command()
     async def pause(self, ctx):
         if ctx.voice_client.is_paused():
             return await ctx.send("I am already paused.")

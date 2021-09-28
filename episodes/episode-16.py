@@ -30,7 +30,6 @@ class Player(commands.Cog):
 
     async def check_queue(self, ctx):
         if len(self.song_queue[ctx.guild.id]) > 0:
-            ctx.voice_client.stop()
             await self.play_song(ctx, self.song_queue[ctx.guild.id][0])
             self.song_queue[ctx.guild.id].pop(0)
 
@@ -181,7 +180,6 @@ class Player(commands.Cog):
 
         if skip:
             ctx.voice_client.stop()
-            await self.check_queue(ctx)
 
 
     @commands.commmand()

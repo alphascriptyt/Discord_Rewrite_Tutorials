@@ -182,7 +182,7 @@ class Player(commands.Cog):
             ctx.voice_client.stop()
 
 
-    @commands.commmand()
+    @commands.command()
     async def pause(self, ctx):
         if ctx.voice_client.is_paused():
             return await ctx.send("I am already paused.")
@@ -199,7 +199,7 @@ class Player(commands.Cog):
             return await ctx.send("I am already playing a song.")
         
         ctx.voice_client.resume()
-        await ctx.send("The current song has been resumed.")`
+        await ctx.send("The current song has been resumed.")
 
 async def setup():
     await bot.wait_until_ready()

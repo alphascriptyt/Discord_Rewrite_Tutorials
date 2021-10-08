@@ -11,7 +11,7 @@ async def on_ready():
 async def convo(ctx):
     msg = await ctx.channel.send("Yo! Are you going to subscribe? (YES/NO)")
     await msg.add_reaction(u"\u2705")
-    await ctx.message.add_reaction(u"\U0001F6AB")
+    await msg.add_reaction(u"\U0001F6AB")
 
     try:
         reaction, user = await bot.wait_for("reaction_add", check=lambda reaction, user: user == ctx.author and reaction.emoji in [u"\u2705", u"\U0001F6AB"], timeout=30.0)
